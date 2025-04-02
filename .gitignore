@@ -1,0 +1,15 @@
+*.nc
+data/
+log/
+*.out
+*.png
+*.json
+__pycache__/
+*.pyc
+GFSData/
+dist/
+build/
+*.spec
+*.tar
+*.pyc
+__pycache__/
