@@ -40,21 +40,14 @@ async def getConvectiveTracking(item:ConvectiveTrackingEntity):
         data["startTime"]=item.time
         data["algorithm"]=item.algorithm
         data["interval"]=item.interval
-        responseData = convectiveTracking(data)
-        if responseData is None:
-            Result().error(f"对流追踪请求失败,error:缺少数据{item.time}")
-        return Result().ok(responseData)
-        # try:
-        #     loop=asyncio.get_event_loop()
-        #     responseData=await loop.run_in_executor(config.GLOBAL_CONFIG["CPU_POOLS"],convectiveTracking,data)
-        #     # responseData=await convectiveTracking(data)
-        #     if responseData is None:
-        #         Result().error(f"对流追踪请求失败,error:缺少数据{item.time}")
-        #     return Result().ok(responseData)
-        # except Exception as e:
-        #     return Result().error(f"对流追踪请求失败,error:{e}")
-
-
+        try:
+            loop = asyncio.get_event_loop()
+            responseData = await loop.run_in_executor(None, convectiveTracking, data)
+            if responseData is None:
+                return Result().error(f"对流追踪请求失败, error: 缺少数据 {item.time}")
+            return Result().ok(responseData)
+        except Exception as e:
+            return Result().error(f"对流追踪请求失败, error: {e}")
 
 if __name__ == '__main__':
     #注意，run的第一个参数 必须是文件名:应用程序名

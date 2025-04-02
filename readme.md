@@ -1,4 +1,11 @@
 # GFS API使用说明
+
+{
+  "time": "2024-06-04 00:00",
+  "interval": 6,
+  "algorithm": "radar_difftrans_deploy_3h"
+}
+
 ## 源代码使用说明
 1. 安装环境
 ```
