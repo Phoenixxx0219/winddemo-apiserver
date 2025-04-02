@@ -1,8 +1,29 @@
 from fastapi import FastAPI  # FastAPI 是一个为你的 API 提供了所有功能的 Python 类。
 import uvicorn
+import asyncio
+
+from entity.convectiveEntity import ConvectiveTrackingEntity
+from function import convectiveTracking
 
 #创建应用程序，app是应用程序名
 app = FastAPI()  # 这个实例将是创建你所有 API 的主要交互对象。这个 app 同样在如下命令中被 uvicorn 所引用
+
+# 统一返回对象 
+class Result:
+    def __init__(self):
+        pass
+    def ok(self,data):
+        return {
+            "code":200,
+            "message":"success",
+            "data":data
+        }
+    def error(self,message):
+        return {
+            "code":500,
+            "message":f"{message}",
+            "data":""
+        }
 
 # API请求
 
@@ -11,24 +32,27 @@ app = FastAPI()  # 这个实例将是创建你所有 API 的主要交互对象�
 async def read_root():
     return {"Hello": "World"}
 
-# @app.post("/api/convective/tracking")
-# async def getConvectiveTracking(item:ConvectiveTrackingEntity):
-#         data={
+@app.post("/api/convective/tracking")
+async def getConvectiveTracking(item:ConvectiveTrackingEntity):
+        data={
 
-#         }
-#         data["startTime"]=item.time
-#         data["algorithm"]=item.algorithm
-#         data["interval"]=item.interval
-#         data["poolScale"]=item.poolScale
-#         try:
-#             loop=asyncio.get_event_loop()
-#             responseData=await loop.run_in_executor(config.GLOBAL_CONFIG["CPU_POOLS"],convectiveTracking,data)
-#             # responseData=await convectiveTracking(data)
-#             if responseData is None:
-#                 Result().error(f"对流追踪请求失败,error:缺少数据{item.time}")
-#             return Result().ok(responseData)
-#         except Exception as e:
-#             return Result().error(f"对流追踪请求失败,error:{e}")
+        }
+        data["startTime"]=item.time
+        data["algorithm"]=item.algorithm
+        data["interval"]=item.interval
+        responseData = convectiveTracking(data)
+        if responseData is None:
+            Result().error(f"对流追踪请求失败,error:缺少数据{item.time}")
+        return Result().ok(responseData)
+        # try:
+        #     loop=asyncio.get_event_loop()
+        #     responseData=await loop.run_in_executor(config.GLOBAL_CONFIG["CPU_POOLS"],convectiveTracking,data)
+        #     # responseData=await convectiveTracking(data)
+        #     if responseData is None:
+        #         Result().error(f"对流追踪请求失败,error:缺少数据{item.time}")
+        #     return Result().ok(responseData)
+        # except Exception as e:
+        #     return Result().error(f"对流追踪请求失败,error:{e}")
 
 
 

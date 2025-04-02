@@ -5,4 +5,3 @@ class ConvectiveTrackingEntity(BaseModel):
     time:str
     interval:int
     algorithm:str
-    poolScale:int=0

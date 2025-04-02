@@ -1,17 +1,15 @@
 import json
 import numpy as np
 from datetime import datetime, timedelta
-from recognition import get_area_threshold, edge_recognition_0, edge_recognition_4, edge_recognition_16
-from tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships
-from transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
-from predict import getSpeed, getDirection
-from data import add_entity, add_span_data
+from tracking.recognition import get_area_threshold, edge_recognition_0, edge_recognition_4, edge_recognition_16
+from tracking.tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships
+from tracking.transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
+from tracking.predict import getSpeed, getDirection
+from tracking.data import add_entity, add_span_data
 
 
-def batch_process(date, algorithm, size, reflectivity_threshold, poolingScale, 
-                  datatype=12, path="D:/University/AndroidProject/winddemo-apiserver/demodata/MaxPool", interval_minutes=6):
-    if poolingScale == 0:
-        path = "D:/University/AndroidProject/winddemo-apiserver/demodata/Traffic/image"
+def batch_process(date, algorithm, size, reflectivity_threshold,
+                  datatype=12, path="D:/University/AndroidProject/winddemo-apiserver/demodata/Traffic/image", interval_minutes=6):
 
     pred_path = path + f"/{date[:-4]}/{datatype}/{algorithm}/{date[-4:-2]}-{date[-2:]}"    
     if algorithm == 'real':
@@ -22,32 +20,20 @@ def batch_process(date, algorithm, size, reflectivity_threshold, poolingScale,
     for real_id in range(10):
         date = date + timedelta(minutes = interval_minutes)
         date_str = date.strftime("%Y%m%d%H%M")
-        if poolingScale == 0:
-            img_path = path + f"/{date_str[:-4]}/{datatype}/real/{date_str}.png"
-        else:
-            img_path = path + f"/{date_str[:-4]}/{datatype}/real/{poolingScale}/{date_str}.png"
+        img_path = path + f"/{date_str[:-4]}/{datatype}/real/{date_str}.png"
         all_images.append(img_path)
     for pred_id in range(10,40):
         date = date + timedelta(minutes = interval_minutes)
         date_str = date.strftime("%Y%m%d%H%M")
-        if poolingScale == 0:
-            img_path = pred_path + f"/{date_str}.png"
-        else:
-            img_path = pred_path + f"/{poolingScale}/{date_str}.png"
+        img_path = pred_path + f"/{date_str}.png"
         all_images.append(img_path)
 
-    print(all_images)
     edge_images = []
     reflectivitys = []
     area_threshold = get_area_threshold(size)
     for img_path in all_images:
         try:
-            if poolingScale == 4:
-                edge_image, reflectivity = edge_recognition_4(img_path, area_threshold/16, reflectivity_threshold)
-            elif poolingScale == 16:
-                edge_image, reflectivity = edge_recognition_16(img_path, area_threshold/256, reflectivity_threshold)
-            else:
-                edge_image, reflectivity = edge_recognition_0(img_path, area_threshold, reflectivity_threshold)
+            edge_image, reflectivity = edge_recognition_0(img_path, area_threshold, reflectivity_threshold)
             edge_images.append(edge_image)
             reflectivitys.append(reflectivity)
         except Exception as e:
@@ -58,7 +44,7 @@ def batch_process(date, algorithm, size, reflectivity_threshold, poolingScale,
     return edge_images, reflectivitys, start_time
 
 
-def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20, poolingScale=0, 
+def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20, 
                      interval_minutes=6, lookup_table_path="D:/University/AndroidProject/winddemo-apiserver/demodata/lookup_table.npy"):
     """
     date: 时间
@@ -78,7 +64,7 @@ def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20, pool
     # 加载查表数组（lookup table）
     lookup_table = np.load(lookup_table_path)
     # 对文件夹中的图片提取轮廓
-    all_images, reflectivitys, start_time = batch_process(date, algorithm, size, reflectivity_threshold, poolingScale)
+    all_images, reflectivitys, start_time = batch_process(date, algorithm, size, reflectivity_threshold)
     cur_time = start_time + timedelta(minutes=9 * interval_minutes)
 
     entities = []  # 全局编号的实体列表
@@ -362,9 +348,8 @@ if __name__=='__main__':
     date = "202406040000"
     algorithm = 'radar_difftrans_deploy_3h'
     size = 1000
-    poolingScale = 0
     reflectivity = 20
-    output_data = monomer_tracking(date, algorithm, size, reflectivity,  poolingScale = poolingScale)
+    output_data = monomer_tracking(date, algorithm, size, reflectivity)
     with open("D:/University/AndroidProject/winddemo-apiserver/demoout/out1.json", 'w', encoding='utf-8') as f:
         json.dump(output_data, f, indent=4, ensure_ascii=False)
     
