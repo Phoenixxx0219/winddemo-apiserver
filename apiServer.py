@@ -1,12 +1,18 @@
-from fastapi import FastAPI  # FastAPI 是一个为你的 API 提供了所有功能的 Python 类。
+import os
 import uvicorn
 import asyncio
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from entity.convectiveEntity import ConvectiveTrackingEntity
 from function import convectiveTracking
 
-#创建应用程序，app是应用程序名
+# 创建应用程序，app是应用程序名
 app = FastAPI()  # 这个实例将是创建你所有 API 的主要交互对象。这个 app 同样在如下命令中被 uvicorn 所引用
+
+# 静态目录挂载（访问 /static/ 路径时会从 ./static 目录读取文件）
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 统一返回对象 
 class Result:
@@ -31,6 +37,14 @@ class Result:
 @app.get("/api/ping")
 async def read_root():
     return {"Hello": "World"}
+
+# 获取真实图片数据
+@app.get("/realimage/{date}/{type}/real/{filename}")
+async def get_real_image(date: str, type: str, filename: str):
+    file_path = f"static/ImageData/{date}/{type}/real/{filename}"
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return {"error": "File not found"}
 
 @app.post("/api/convective/tracking")
 async def getConvectiveTracking(item:ConvectiveTrackingEntity):
