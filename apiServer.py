@@ -46,6 +46,14 @@ async def get_real_image(date: str, type: str, filename: str):
         return FileResponse(file_path)
     return {"error": "File not found"}
 
+# 获取预测图片数据
+@app.get("/forcastimage/{date}/{type}/forcast/{time}/{filename}")
+async def get_real_image(date: str, type: str, time: str, filename: str):
+    file_path = f"static/ImageData/{date}/{type}/real/{filename}"
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return {"error": "File not found"}
+
 @app.post("/api/convective/tracking")
 async def getConvectiveTracking(item:ConvectiveTrackingEntity):
         data={
