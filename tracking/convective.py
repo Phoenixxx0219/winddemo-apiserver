@@ -9,7 +9,7 @@ from tracking.data import add_entity, add_span_data
 
 
 def batch_process(date, algorithm, size, reflectivity_threshold,
-                  datatype=12, path="D:/University/AndroidProject/winddemo-apiserver/demodata/Traffic/image", interval_minutes=6):
+                  datatype=12, path="D:/University/MyForecastApp/winddemo-apiserver/static/Traffic/image", interval_minutes=6):
 
     pred_path = path + f"/{date[:-4]}/{datatype}/{algorithm}/{date[-4:-2]}-{date[-2:]}"    
     if algorithm == 'real':
@@ -45,7 +45,7 @@ def batch_process(date, algorithm, size, reflectivity_threshold,
 
 
 def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20, 
-                     interval_minutes=6, lookup_table_path="D:/University/AndroidProject/winddemo-apiserver/demodata/lookup_table.npy"):
+                     interval_minutes=6, lookup_table_path="D:/University/MyForecastApp/winddemo-apiserver/static/lookup_table.npy"):
     """
     date: 时间
     algorithm (int): 预测算法。
@@ -345,12 +345,12 @@ if __name__=='__main__':
     #记录开始时间
     start_time = time.perf_counter()
 
-    date = "202406040000"
-    algorithm = 'radar_difftrans_deploy_3h'
+    date = "202411200400"
+    algorithm = 'forcast'
     size = 1000
     reflectivity = 20
     output_data = monomer_tracking(date, algorithm, size, reflectivity)
-    with open("D:/University/AndroidProject/winddemo-apiserver/demoout/out1.json", 'w', encoding='utf-8') as f:
+    with open("D:/University/MyForecastApp/winddemo-apiserver/demoout/out2.json", 'w', encoding='utf-8') as f:
         json.dump(output_data, f, indent=4, ensure_ascii=False)
     
     # 记录结束时间
@@ -385,4 +385,4 @@ if __name__=='__main__':
                 print(f"Entity with id {entity.get('id')} has no spanData.")
 
 
-    check_start_time_equality("D:/University/AndroidProject/winddemo-apiserver/demoout/out1.json")
+    check_start_time_equality("D:/University/MyForecastApp/winddemo-apiserver/demoout/out2.json")

@@ -16,8 +16,7 @@ def convectiveTracking(data):
     //预报时间，后端会返回前1h的真实值，和后3h的单点查询信息
     "startTime": "2024-11-04 00:00",
     "interval": 6,
-    "algorithm": "",
-    "poolScale":池化尺度
+    "algorithm": ""
     }
     返回值
     {
