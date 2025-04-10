@@ -1,4 +1,5 @@
 import datetime
+import pytz
 from tracking.convective import monomer_tracking
 
 def satisfyTime(dt,interval:int):
@@ -98,10 +99,14 @@ def find_earliest_entity(json_data, target_point):
       json_data: 包含单体轮廓数据的字典对象
       target_point: (lat, lon) 格式的前端传入坐标
     返回:
-      (entity_id, occurrence_time) 或者 None
+      {"id": entity_id, "time": occurrence_time_in_beijing} 或者 None
     """
     earliest_entity = None
     earliest_time = None  # 存储 datetime 对象，便于比较
+
+    # 定义 UTC 和 北京时区（Asia/Shanghai）
+    utc_tz = pytz.utc
+    beijing_tz = pytz.timezone("Asia/Shanghai")
     
     # 遍历所有单体轮廓
     for entity in json_data.get("entities", []):
@@ -112,21 +117,28 @@ def find_earliest_entity(json_data, target_point):
             polygon = span.get("outline", [])
             if not polygon or len(polygon) < 3:
                 continue  # 简单排除非有效多边形
-            
+
             # 判断前端传入点是否在该轮廓内部
             if point_in_polygon(target_point, polygon):
-                # 解析该时刻对应的时间，假定时间格式为 "%Y-%m-%d %H:%M:%S"
+                # 解析该时刻对应的时间，假定时间格式为 "%Y-%m-%d %H:%M:%S"，且原始时间为 UTC 时间
                 try:
                     span_time = datetime.datetime.strptime(span["time"], "%Y-%m-%d %H:%M:%S")
+                    # 设置原始时间为 UTC
+                    span_time = utc_tz.localize(span_time)
                 except Exception as e:
-                    continue  # 格式异常则跳过
+                    continue  # 时间格式异常则跳过
 
                 # 如果该轮廓首次出现的时间更早，则更新 earliest_entity
                 if earliest_time is None or span_time < earliest_time:
                     earliest_time = span_time
                     earliest_entity = {"id": entity_id, "time": span["time"]}
-                # 该单体中可能存在多个满足条件的时间（但只取最早的即可）
-                # 可以选择跳出循环，避免多余比较： break
-                break    # 如果同一个单体中仅需最早的一个时间，则可使用 break
-                
+                # 同一个单体中只取最早的一个时间，直接跳出循环
+                break
+
+    if earliest_entity and earliest_time:
+        # 将UTC时间转换为北京时间（Asia/Shanghai）
+        beijing_time = earliest_time.astimezone(beijing_tz)
+        # 返回格式化后的北京时间字符串，格式保持 "%Y-%m-%d %H:%M:%S"
+        earliest_entity["time"] = beijing_time.strftime("%Y-%m-%d %H:%M:%S")
+
     return earliest_entity
