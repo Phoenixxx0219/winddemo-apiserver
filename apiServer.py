@@ -7,7 +7,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from entity.convectiveEntity import ConvectiveTrackingEntity
-from function import convectiveTracking
+from entity.trackingPointEntity import TrackingPointEntity
+from function import convectiveTracking, find_earliest_entity
 
 # 创建应用程序，app是应用程序名
 app = FastAPI()  # 这个实例将是创建你所有 API 的主要交互对象。这个 app 同样在如下命令中被 uvicorn 所引用
@@ -81,6 +82,31 @@ async def getConvectiveTracking(item:ConvectiveTrackingEntity):
             return Result().ok(responseData)
         except Exception as e:
             return Result().error(f"对流追踪请求失败, error: {e}")
+        
+# 获取单点查询信息
+@app.post("/api/convective/point")
+async def getTrackingEntityByPoint(item: TrackingPointEntity):
+    print(f"请求包含坐标点的对流单体追踪, 参数: {item}")
+    # 根据已有参数构造 convectiveTracking 接口需要的数据
+    data = {
+        "startTime": item.time,
+        "algorithm": item.algorithm,
+        "interval": item.interval
+    }
+    try:
+        loop = asyncio.get_event_loop()
+        # 获取包含单体轮廓数据的响应（JSON格式）
+        responseData = await loop.run_in_executor(None, convectiveTracking, data)
+        if responseData is None:
+            return Result().error(f"对流追踪请求失败, error: 缺少数据 {item.time}")
+
+        # 使用前端传入的坐标点 (lat, lon)
+        target_point = (item.lat, item.lon)
+        earliest = find_earliest_entity(responseData, target_point)
+        # 若没有匹配的轮廓，则返回 null
+        return Result().ok(earliest)  # earliest 为 None 时前端得到 null
+    except Exception as e:
+        return Result().error(f"对流追踪请求失败, error: {e}")
 
 if __name__ == '__main__':
     #注意，run的第一个参数 必须是文件名:应用程序名

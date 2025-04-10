@@ -1,5 +1,4 @@
 import datetime
-
 from tracking.convective import monomer_tracking
 
 def satisfyTime(dt,interval:int):
@@ -53,45 +52,8 @@ def convectiveTracking(data):
             raise Exception(f"时间{startTime}应该为{interval}min的整数")      
         # 变为yyyyMMddHHmm的时间
         startTime=startTime.strftime("%Y%m%d%H%M")
-        # 先尝试获取缓存
-        # redisWorker=RedisWorker()
-        # redisWorker = config.GLOBAL_CONFIG["REDIS_CLIENT"]
-        # key=config.GLOBAL_CONFIG["TRACKING_KEY"]+algorithm+":"+startTime
-        # value=redisWorker.getJSON(key)
         import time
         st=time.time()
-        # if value is None:
-        #     print(f"获取tracking缓存失败{startTime}")
-        #     token=generateUUID()+"Z"+str(random.randint(0,100000))
-        #     lock=getLock(key,token)
-        #     try:
-        #         if lock:
-        #             print(f"获取tracking缓存失败，获取锁成功{startTime}:{key}:{token}")
-        #             # 双重检查机制
-        #             value=redisWorker.getJSON(key)
-        #             if value is not None:
-        #                 print(f"获取tracking缓存失败，双重检查成功{startTime}:{key}:{token}")
-        #                 return value
-        #             # 获得一个对流云追踪结果
-        #             res=monomer_tracking(date=startTime,
-        #                                  algorithm=algorithm,
-        #                                  interval_minutes=interval,
-        #                                  poolingScale=poolScale)
-        #             # 更新缓存,过期时间为30min
-        #             redisWorker.setJSON(key,res,ex=random_expire(30,60)*60)
-        #             return res
-        #         else:
-        #             print(f"获取tracking缓存失败，获取锁失败{startTime}:{key}:{token}")
-        #             # 随机等待10ms-100ms
-        #             time.sleep(random.uniform(0.01,0.1))
-        #             return convectiveTracking(data)
-        #     finally:
-        #         if lock:
-        #             print(f"释放tracking锁{startTime}:{key}:{token}")
-        #             releaseLock(key,token)
-        # else:
-        #     print(f"获取tracking缓存成功{startTime}")
-        #     res=value
         res=monomer_tracking(date=startTime,
                              algorithm=algorithm,
                              interval_minutes=interval)
@@ -103,3 +65,68 @@ def convectiveTracking(data):
     except Exception as e:
         print(f"error:tracking出现错误:{e}")
         raise e
+    
+def point_in_polygon(point, polygon):
+    """
+    利用射线法判断点是否在多边形内
+    参数:
+      point: (lat, lon) 格式的坐标
+      polygon: [(lat1, lon1), (lat2, lon2), ...] 多边形顶点列表
+    返回:
+      True 如果点在多边形内，否则 False
+    """
+    x, y = point
+    inside = False
+    n = len(polygon)
+    
+    # 遍历所有边
+    for i in range(n):
+        j = (i + 1) % n  # 保证最后一个点和第一个点构成边界
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        # 判定射线与边相交的条件
+        intersect = ((yi > y) != (yj > y)) and \
+                    (x < (xj - xi) * (y - yi) / (yj - yi + 1e-10) + xi)
+        if intersect:
+            inside = not inside
+    return inside
+
+def find_earliest_entity(json_data, target_point):
+    """
+    根据前端传入的坐标点，查找包含该点的最早出现的单体轮廓
+    参数:
+      json_data: 包含单体轮廓数据的字典对象
+      target_point: (lat, lon) 格式的前端传入坐标
+    返回:
+      (entity_id, occurrence_time) 或者 None
+    """
+    earliest_entity = None
+    earliest_time = None  # 存储 datetime 对象，便于比较
+    
+    # 遍历所有单体轮廓
+    for entity in json_data.get("entities", []):
+        entity_id = entity.get("id")
+        # 遍历该单体的每一个检测时刻
+        for span in entity.get("spanData", []):
+            # 获取轮廓 outline 信息，注意 JSON 中每个坐标点的格式是 [lat, lon]
+            polygon = span.get("outline", [])
+            if not polygon or len(polygon) < 3:
+                continue  # 简单排除非有效多边形
+            
+            # 判断前端传入点是否在该轮廓内部
+            if point_in_polygon(target_point, polygon):
+                # 解析该时刻对应的时间，假定时间格式为 "%Y-%m-%d %H:%M:%S"
+                try:
+                    span_time = datetime.datetime.strptime(span["time"], "%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    continue  # 格式异常则跳过
+
+                # 如果该轮廓首次出现的时间更早，则更新 earliest_entity
+                if earliest_time is None or span_time < earliest_time:
+                    earliest_time = span_time
+                    earliest_entity = {"id": entity_id, "time": span["time"]}
+                # 该单体中可能存在多个满足条件的时间（但只取最早的即可）
+                # 可以选择跳出循环，避免多余比较： break
+                break    # 如果同一个单体中仅需最早的一个时间，则可使用 break
+                
+    return earliest_entity
