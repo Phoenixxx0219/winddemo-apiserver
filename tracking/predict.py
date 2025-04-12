@@ -1,6 +1,35 @@
 import math
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
-def calculate_angle(lat_weight, lon_weight):
+def linear_regression_direction(center_points):
+    """
+    对给定的中心点 (x, y) 数据进行线性回归拟合，并返回拟合直线的方向角（0-360度）及决定系数 R²。
+    
+    参数:
+        center_points: list of tuple, 每个元素为 (x, y)
+    
+    返回:
+        angle: float, 拟合直线的方向角（以正北为基准，顺时针为正方向）
+        r2: float, 决定系数，用于判断拟合效果
+    """
+    # 转换为 numpy 数组
+    center_points = np.array(center_points)
+    # 使用 x 作为自变量，y 作为因变量
+    X = center_points[:, 0].reshape(-1, 1)
+    y = center_points[:, 1]
+    model = LinearRegression()
+    model.fit(X, y)
+    y_pred = model.predict(X)
+    r2 = model.score(X, y)
+    # 计算斜率对应的角度（注意坐标系转换，这里假设正北为 0°，顺时针增加）
+    m = model.coef_[0]
+    theta_rad = math.atan(m)
+    theta_deg = math.degrees(theta_rad)
+    angle = (90 - theta_deg) % 360
+    return angle, r2
+
+def calculate_angle2(lat_weight, lon_weight):
     # 计算从正东到点(lat_weight, lon_weight)的弧度，并将弧度转换为度数
     angle_rad = math.atan2(lat_weight, lon_weight)
     angle_deg = math.degrees(angle_rad)
@@ -9,7 +38,7 @@ def calculate_angle(lat_weight, lon_weight):
     return final_angle
 
 
-def getDirection(contours):
+def getDirection2(contours):
     # 初始化计数器
     up_move_count = 0
     down_move_count = 0
@@ -96,7 +125,7 @@ def getDirection(contours):
     if lat_weight == 0 and lon_weight == 0:
         angle = 0  # 如果没有移动，则方向角度为0
     else:
-        angle = calculate_angle(vector[0],vector[1])
+        angle = calculate_angle2(vector[0],vector[1])
 
     return angle, tops, bottoms, rights, lefts, lat_weight, lon_weight
 
@@ -160,7 +189,7 @@ def find_longest_continuous_segment(weight, datas, times):
     return longest_segment
 
 
-def getSpeed(times, tops, bottoms, rights, lefts, lat_weight, lon_weight):
+def getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight):
     # 检查times, tops, bottoms, rights, lefts长度是否一致
     if not (len(times) == len(tops) == len(bottoms) == len(rights) == len(lefts)):
         raise ValueError("times, tops, bottoms, rights, lefts must have the same length.")
@@ -180,88 +209,90 @@ def getSpeed(times, tops, bottoms, rights, lefts, lat_weight, lon_weight):
     return v_lat, v_lon, speed
 
 
-# def getSpeed(ellipse1, ellipse2, interval):
-#     """
-#     计算椭圆间的速度分量。
-
-#     参数：
-#         ellipse1 (tuple): 第一个椭圆的中心点 (x1, y1)，像素坐标。
-#         ellipse2 (tuple): 第二个椭圆的中心点 (x2, y2)，像素坐标。
-#         interval (float): 时间间隔（分钟）。
-#     返回：
-#         tuple: (speed, u, v) 总速度大小以及两个方向的速度分量，单位为 m/s。
-#     """
-#     # 像素坐标
-#     x1, y1 = ellipse1
-#     x2, y2 = ellipse2
-#     # 经纬度分辨率
-#     lat_resolution = 0.010144927536231883  # 纬度分辨率 (度/像素)
-#     lon_resolution = 0.0109756097560976  # 经度分辨率 (度/像素)
-#     # 计算经纬度的实际差值（单位：度）
-#     delta_lat = (y2 - y1) * lat_resolution  # 纬度差值
-#     delta_lon = (x2 - x1) * lon_resolution  # 经度差值
-#     # 将经纬度差值转换为实际的米（距离）
-#     lat1 = math.radians(y1 * lat_resolution)  # 转换为弧度
-#     lon1 = math.radians(x1 * lon_resolution)  # 转换为弧度
-#     lat2 = math.radians(y2 * lat_resolution)  # 转换为弧度
-#     lon2 = math.radians(x2 * lon_resolution)  # 转换为弧度
-#     # 计算纬度方向的实际距离（单位：米）
-#     R = 6371 * 1000  # 地球半径（单位：米）
-#     lat_distance = delta_lat * (R * math.pi / 180)
-#     # 计算经度方向的实际距离（单位：米），需要乘以纬度余弦因子
-#     lon_distance = delta_lon * (R * math.pi / 180) * math.cos((lat1 + lat2) / 2)
-#     # Haversine 距离计算总距离
-#     dlat = lat2 - lat1
-#     dlon = lon2 - lon1
-#     a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
-#     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-#     total_distance = R * c  # 总距离，单位：米
-#     # 速度计算
-#     speed = total_distance / (interval * 60)  # 速度，单位：米/秒
-#     # 计算速度分量
-#     u = lon_distance / (interval * 60)  # 经度方向速度（单位：m/s）
-#     v = lat_distance / (interval * 60)  # 纬度方向速度（单位：m/s）
-
-#     return speed, u, v
 
 
-# def calculate_angle(x, y):
-#     """
-#     计算向量的角度。
+def getSpeed(ellipse1, ellipse2, interval):
+    """
+    计算椭圆间的速度分量。
 
-#     参数：
-#         x (float): 向量的x分量。
-#         y (float): 向量的y分量。
+    参数：
+        ellipse1 (tuple): 第一个椭圆的中心点 (x1, y1)，像素坐标。
+        ellipse2 (tuple): 第二个椭圆的中心点 (x2, y2)，像素坐标。
+        interval (float): 时间间隔（分钟）。
+    返回：
+        tuple: (speed, u, v) 总速度大小以及两个方向的速度分量，单位为 m/s。
+    """
+    # 像素坐标
+    x1, y1 = ellipse1
+    x2, y2 = ellipse2
+    # 经纬度分辨率
+    lat_resolution = 0.010144927536231883  # 纬度分辨率 (度/像素)
+    lon_resolution = 0.0109756097560976  # 经度分辨率 (度/像素)
+    # 计算经纬度的实际差值（单位：度）
+    delta_lat = (y2 - y1) * lat_resolution  # 纬度差值
+    delta_lon = (x2 - x1) * lon_resolution  # 经度差值
+    # 将经纬度差值转换为实际的米（距离）
+    lat1 = math.radians(y1 * lat_resolution)  # 转换为弧度
+    lon1 = math.radians(x1 * lon_resolution)  # 转换为弧度
+    lat2 = math.radians(y2 * lat_resolution)  # 转换为弧度
+    lon2 = math.radians(x2 * lon_resolution)  # 转换为弧度
+    # 计算纬度方向的实际距离（单位：米）
+    R = 6371 * 1000  # 地球半径（单位：米）
+    lat_distance = delta_lat * (R * math.pi / 180)
+    # 计算经度方向的实际距离（单位：米），需要乘以纬度余弦因子
+    lon_distance = delta_lon * (R * math.pi / 180) * math.cos((lat1 + lat2) / 2)
+    # Haversine 距离计算总距离
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    total_distance = R * c  # 总距离，单位：米
+    # 速度计算
+    speed = total_distance / (interval * 60)  # 速度，单位：米/秒
+    # 计算速度分量
+    u = lon_distance / (interval * 60)  # 经度方向速度（单位：m/s）
+    v = lat_distance / (interval * 60)  # 纬度方向速度（单位：m/s）
 
-#     返回：
-#         float: 角度（0到360度）。
-#     """
-#     # 计算弧度
-#     angle_rad = math.atan2(y, x)
-#     # 将弧度转换为度，并确保角度范围在 0 到 360 度之间
-#     angle_deg = math.degrees(angle_rad) + 90
-#     if angle_deg < 0:
-#         angle_deg += 360
-#     return angle_deg
+    return speed * 3.6, u, v
 
 
-# def getDirection(ellipse1, ellipse2):
-#     """
-#     计算两个椭圆中心的方向向量及角度。
+def calculate_angle(x, y):
+    """
+    计算向量的角度。
 
-#     参数：
-#         ellipse1 (tuple): 第一个椭圆的中心点。
-#         ellipse2 (tuple): 第二个椭圆的中心点。
-#     返回：
-#         tuple: 
-#             - angle (float): 方向角度（0到360度）。
-#             - vector (list): 方向向量 [dx, dy]。
-#     """
-#     # 像素坐标
-#     x1, y1 = ellipse1
-#     x2, y2 = ellipse2
-#     # 计算向量
-#     vector=[x2-x1,y2-y1]
-#     # 计算相对于(x1,y1)的夹角，
-#     angle=calculate_angle(vector[0],vector[1])
-#     return angle, vector
+    参数：
+        x (float): 向量的x分量。
+        y (float): 向量的y分量。
+
+    返回：
+        float: 角度（0到360度）。
+    """
+    # 计算弧度
+    angle_rad = math.atan2(y, x)
+    # 将弧度转换为度，并确保角度范围在 0 到 360 度之间
+    angle_deg = math.degrees(angle_rad) + 90
+    if angle_deg < 0:
+        angle_deg += 360
+    return angle_deg
+
+
+def getDirection(ellipse1, ellipse2):
+    """
+    计算两个椭圆中心的方向向量及角度。
+
+    参数：
+        ellipse1 (tuple): 第一个椭圆的中心点。
+        ellipse2 (tuple): 第二个椭圆的中心点。
+    返回：
+        tuple: 
+            - angle (float): 方向角度（0到360度）。
+            - vector (list): 方向向量 [dx, dy]。
+    """
+    # 像素坐标
+    x1, y1 = ellipse1
+    x2, y2 = ellipse2
+    # 计算向量
+    vector=[x2-x1,y2-y1]
+    # 计算相对于(x1,y1)的夹角，
+    angle=calculate_angle(vector[0],vector[1])
+    return angle, vector
