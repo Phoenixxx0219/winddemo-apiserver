@@ -324,14 +324,12 @@ def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20,
             # 收集所有中心点数据
             center_points = [(data["x"], data["y"]) for data in span_data_list]
             angle_reg, r2 = linear_regression_direction(center_points)
-            print(f"Entity ID: {entity['id']}, Angle: {angle_reg}, R²: {r2}")
             # 设定一个 R² 阈值（例如 0.8），以判断拟合是否充分
             if r2 >= 0.8:
                 # 使用第一帧和最后一帧的中心点计算时间间隔
                 time_format = '%Y-%m-%d %H:%M:%S'
                 t1 = span_data_list[0]["time"]
                 t2 = span_data_list[-1]["time"]
-                print(f"t1: {t1}, t2: {t2}")
                 # 如果时间为字符串，则转换为 datetime 对象
                 if isinstance(t1, str):
                     t1 = datetime.strptime(t1, time_format)
@@ -344,7 +342,6 @@ def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20,
                 ellipse1 = center_points[0]
                 ellipse2 = center_points[-1]
                 speed, u, v = getSpeed(ellipse1, ellipse2, interval)
-                print(f"Entity ID: {entity['id']}, Speed: {speed}, interval: {interval}")
                 entity["direction"] = angle_reg
                 entity["speed"] = speed
             else:
