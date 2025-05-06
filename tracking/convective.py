@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from datetime import datetime, timedelta
-from tracking.recognition import get_area_threshold, edge_recognition_0, edge_recognition_4, edge_recognition_16
+from tracking.recognition import get_area_threshold, edge_recognition_0
 from tracking.tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships
 from tracking.transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
 from tracking.predict import linear_regression_direction, getSpeed, getDirection, getSpeed2, getDirection2
