@@ -44,7 +44,7 @@ def batch_process(date, algorithm, size, reflectivity_threshold,
     return edge_images, reflectivitys, start_time
 
 
-def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20, 
+def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30, 
                      interval_minutes=6, lookup_table_path="D:/University/MyForecastApp/winddemo-apiserver/static/lookup_table.npy"):
     """
     date: 时间
@@ -324,8 +324,8 @@ def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20,
             # 收集所有中心点数据
             center_points = [(data["x"], data["y"]) for data in span_data_list]
             angle_reg, r2 = linear_regression_direction(center_points)
-            # 设定一个 R² 阈值（例如 0.8），以判断拟合是否充分
-            if r2 >= 0.8:
+            # 设定一个 R² 阈值，以判断拟合是否充分
+            if r2 >= 0.7:
                 # 使用第一帧和最后一帧的中心点计算时间间隔
                 time_format = '%Y-%m-%d %H:%M:%S'
                 t1 = span_data_list[0]["time"]
@@ -342,7 +342,8 @@ def monomer_tracking(date, algorithm, size=1000, reflectivity_threshold=20,
                 ellipse1 = center_points[0]
                 ellipse2 = center_points[-1]
                 speed, u, v = getSpeed(ellipse1, ellipse2, interval)
-                entity["direction"] = angle_reg
+                angle, vector = getDirection(ellipse1, ellipse2)
+                entity["direction"] = angle
                 entity["speed"] = speed
             else:
                 # 如果线性回归拟合效果不理想，则采用原来的轮廓连续性方法
