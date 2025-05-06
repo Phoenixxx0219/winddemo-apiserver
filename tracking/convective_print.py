@@ -1,12 +1,11 @@
 import json
 import numpy as np
 from datetime import datetime, timedelta
-from tracking.recognition import get_area_threshold, edge_recognition
-from tracking.tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships
-from tracking.transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
-from tracking.predict import linear_regression_direction, getSpeed, getDirection, getSpeed2, getDirection2
-from tracking.data import add_entity, add_span_data
-from tracking.convective_print import monomer_tracking_test
+from recognition import get_area_threshold, edge_recognition
+from tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships, getSpeedAndDirection
+from transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
+from predict import linear_regression_direction, getSpeed, getDirection, getSpeed2, getDirection2
+from data import add_entity, add_span_data
 
 
 def batch_process(date, algorithm, size, reflectivity_threshold,
@@ -47,7 +46,7 @@ def batch_process(date, algorithm, size, reflectivity_threshold,
     return edge_images, reflectivitys, start_time
 
 
-def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30, 
+def monomer_tracking_test(date, algorithm, size=1000, reflectivity_threshold=20, 
                      interval_minutes=6, lookup_table_path="D:/University/MyForecastApp/winddemo-apiserver/static/lookup_table.npy"):
     """
     date: 时间
@@ -99,6 +98,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
     outlines_list = []
     max_values_list = []
     avg_values_list = []
+    relation_lists = {}
     for img, reflectivity in zip(all_images, reflectivitys):
         if img is not None:
             ellipses, outlines, max_values, avg_values = get_ellipses_and_contours(img, reflectivity, scale_x, scale_y)
@@ -140,6 +140,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                 first_ellipse_info[global_id] = ellipse
                 last_outline_info[global_id] = outlines1[idx]
                 last_ellipse_info[global_id] = ellipse
+                relation_lists[global_id] = []
 
         new_entity_mapping = {}  # 下一帧的实体编号映射
 
@@ -174,6 +175,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                     last_outline_info[global_id] = outlines2[frame2_id] # 更新实体椭圆信息
                     last_ellipse_info[global_id] = ellipses2[frame2_id]
                     new_entity_mapping[frame2_id] = global_id
+                    relation_lists[global_id].append((index2, '延续'))
             
             elif rel["state"] == "分裂":
                 # 找到面积最大的单体，其延续分裂前单体的信息
@@ -198,6 +200,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                     # 更新原实体信息
                     add_span_data(entities[global_id - 1], img_time, index2, max_values2[max_frame2_id], 
                                   avg_values2[max_frame2_id], outline, lat, lon, x, y)
+                    relation_lists[global_id].append((index2, '分裂'))
                     last_outline_info[global_id] = outlines2[max_frame2_id]  # 更新椭圆信息
                     last_ellipse_info[global_id] = ellipses2[max_frame2_id]
                     new_entity_mapping[max_frame2_id] = global_id
@@ -221,6 +224,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                             add_span_data(entities[global_id - 1], img_time, index2, max_values2[frame2_id], 
                                           avg_values2[frame2_id], outline, lat, lon, x, y)
 
+                            relation_lists[global_id].append((index2, '分裂'))
                             last_outline_info[global_id] = outlines2[frame2_id] # 更新实体椭圆信息
                             last_ellipse_info[global_id] = ellipses2[frame2_id]
                             new_entity_mapping[frame2_id] = global_id
@@ -237,6 +241,8 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                         first_ellipse_info[new_global_id] = ellipses2[frame2_id]
                         last_outline_info[new_global_id] = outlines2[frame2_id]
                         last_ellipse_info[new_global_id] = ellipses2[frame2_id]
+                        relation_lists[new_global_id] = []
+                        relation_lists[new_global_id].append((index2, '分裂'))
 
         for rel in relationships["frame2_to_frame1"]:
             if rel["state"] == "生成":
@@ -262,10 +268,13 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                         last_outline_info[global_id] = outlines2[frame2_id] # 更新实体椭圆信息
                         last_ellipse_info[global_id] = ellipses2[frame2_id]
                         new_entity_mapping[frame2_id] = global_id
+                        relation_lists[global_id].append((index2, '延续'))
                         break
                 # 若不匹配，则认为是新生成的
                 if frame2_id not in new_entity_mapping:
                     global_id = len(entities) + 1
+                    relation_lists[global_id] = []
+                    relation_lists[global_id].append((index2, '生成'))
                     new_entity_mapping[frame2_id] = global_id
                     x, y = ellipses2[frame2_id][0]
                     lat, lon = get_latlon_from_coordinates(x, y, lookup_table)
@@ -290,6 +299,7 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                 # 延续面积最大的单体
                 if max_frame1_id is not None:
                     global_id = entity_mapping[max_frame1_id]
+                    relation_lists[global_id].append((index2, '合并'))
                     if frame2_id not in new_entity_mapping:
                         # 更新数据
                         entities[global_id - 1]["endTime"] = img_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -307,6 +317,8 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                 else:
                     if frame2_id not in new_entity_mapping:
                         global_id = len(entities) + 1
+                        relation_lists[global_id] = []
+                        relation_lists[global_id].append((index2, '合并'))
                         new_entity_mapping[frame2_id] = global_id
                         x, y = ellipses2[frame2_id][0]
                         lat, lon = get_latlon_from_coordinates(x, y, lookup_table)
@@ -326,38 +338,48 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
             # 收集所有中心点数据
             center_points = [(data["x"], data["y"]) for data in span_data_list]
             angle_reg, r2 = linear_regression_direction(center_points)
-            # 设定一个 R² 阈值，以判断拟合是否充分
+            # 使用第一帧和最后一帧的中心点计算时间间隔
+            time_format = '%Y-%m-%d %H:%M:%S'
+            t1 = span_data_list[0]["time"]
+            t2 = span_data_list[-1]["time"]
+            # 如果时间为字符串，则转换为 datetime 对象
+            if isinstance(t1, str):
+                t1 = datetime.strptime(t1, time_format)
+            if isinstance(t2, str):
+                t2 = datetime.strptime(t2, time_format)
+            interval = (t2 - t1).total_seconds() / 60.0
+            if interval <= 0:
+                interval = 1  # 防止除 0 的情况
+            # 用第一个和最后一个中心点计算速度
+            ellipse1 = center_points[0]
+            ellipse2 = center_points[-1]
+            speed1, u, v = getSpeed(ellipse1, ellipse2, interval)
+            angle1, vector = getDirection(ellipse1, ellipse2)
+
+            # 如果线性回归拟合效果不理想，则采用原来的轮廓连续性方法
+            contours = []
+            times = []
+            for span_data in span_data_list:
+                contours.append(span_data["outline"])
+                times.append(span_data["index"])
+            direction2, tops, bottoms, rights, lefts, lat_weight, lon_weight = getDirection2(contours)
+            _, _, speed2 = getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight)
+
+            gid = entity['id']
+            angle1, speed1, direction2, speed2 = getSpeedAndDirection(date, gid, angle1, speed1, direction2, speed2)
+
             if r2 >= 0.7:
-                # 使用第一帧和最后一帧的中心点计算时间间隔
-                time_format = '%Y-%m-%d %H:%M:%S'
-                t1 = span_data_list[0]["time"]
-                t2 = span_data_list[-1]["time"]
-                # 如果时间为字符串，则转换为 datetime 对象
-                if isinstance(t1, str):
-                    t1 = datetime.strptime(t1, time_format)
-                if isinstance(t2, str):
-                    t2 = datetime.strptime(t2, time_format)
-                interval = (t2 - t1).total_seconds() / 60.0
-                if interval <= 0:
-                    interval = 1  # 防止除 0 的情况
-                # 用第一个和最后一个中心点计算速度
-                ellipse1 = center_points[0]
-                ellipse2 = center_points[-1]
-                speed, u, v = getSpeed(ellipse1, ellipse2, interval)
-                angle, vector = getDirection(ellipse1, ellipse2)
-                entity["direction"] = angle
-                entity["speed"] = speed
+                entity["direction"] = angle1
+                entity["speed"] = speed1
             else:
-                # 如果线性回归拟合效果不理想，则采用原来的轮廓连续性方法
-                contours = []
-                times = []
-                for span_data in span_data_list:
-                    contours.append(span_data["outline"])
-                    times.append(span_data["index"])
-                direction, tops, bottoms, rights, lefts, lat_weight, lon_weight = getDirection2(contours)
-                _, _, speed = getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight)
-                entity["direction"] = direction
-                entity["speed"] = speed
+                entity["direction"] = direction2
+                entity["speed"] = speed2
+
+            print("entity id:", entity["id"], "r2:", r2)
+            rels = relation_lists.get(gid, [])
+            print(f"relations: {rels}")
+            print("质心法 ", "speed:", speed1, ", direction:", angle1, )
+            print("轮廓法 ", "speed:", speed2, ", direction:", direction2)
         else:
             # 若数据点不足（或 spanData 为空），直接采用轮廓连续性方法
             contours = []
@@ -377,19 +399,3 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
 
     return output_data
 
-
-if __name__=='__main__':
-    import time
-    #记录开始时间
-    start_time = time.perf_counter()
-
-    date = "202406050454"
-    algorithm = 'forcast'
-
-    output_data = monomer_tracking_test(date, algorithm)
-    
-    # 记录结束时间
-    end_time = time.perf_counter()
-    # 计算并打印执行时间
-    execution_time = end_time - start_time
-    print(f"The test function took {execution_time} seconds to complete.")  

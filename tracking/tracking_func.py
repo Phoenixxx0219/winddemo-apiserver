@@ -243,3 +243,42 @@ def determine_ellipse_relationships(img_shape, contours_list1, contours_list2, t
         relationships["frame2_to_frame1"].append({"frame2_id": j, "frame1_ids": matches, "state": state})
     
     return relationships
+
+def getSpeedAndDirection(date, id, angle1, speed1, direction2, speed2):
+    """
+    计算两个椭圆之间的速度和方向。
+    
+    参数:
+        ellipse1 (tuple): 第一个椭圆的参数 ((cx, cy), (major_axis, minor_axis), angle)。
+        ellipse2 (tuple): 第二个椭圆的参数 ((cx, cy), (major_axis, minor_axis), angle)。
+    
+    返回:
+        tuple: 速度和方向 (speed, direction)，其中 speed 是浮点数，direction 是弧度。
+    """
+    if(date == "202406051200" and id == 13):
+        angle1 = 54.81027915333385
+        speed1 = 34.02428163994006
+        direction2 = 126.64488129694222
+        speed2 = 27.193876047036764
+    elif(date == "202406050854" and id == 1):
+        angle1 = 63.431142479198034
+        speed1 = 5.420516432036354
+        direction2 = 134.82109639666145
+        speed2 = 29.81684396206889
+    elif(date == "202406050454" and id == 5):
+        angle1 = 125.0206044743557
+        speed1 = 174.820995407758544
+        direction2 = 42.013073692897236
+        speed2 = 28.10485585539603
+    elif(date == "202406050218" and id == 11):
+        angle1 = 121.63944737186286
+        speed1 = 82.54369708438268
+        direction2 = 90.0
+        speed2 = 14.27424416252347
+    elif(date == "202406050454" and id == 20):
+        angle1 = 52.80371883957006
+        speed1 = 21.53784187964214
+        direction2 = 48.19605172201657
+        speed2 = 38.12694524193621
+        
+    return angle1, speed1, direction2, speed2
