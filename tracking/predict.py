@@ -29,6 +29,10 @@ def linear_regression_direction(center_points):
     angle = (90 - theta_deg) % 360
     return angle, r2
 
+
+"""
+轮廓描述的边界值变化法
+"""
 def calculate_angle2(lat_weight, lon_weight):
     # 计算从正东到点(lat_weight, lon_weight)的弧度，并将弧度转换为度数
     angle_rad = math.atan2(lat_weight, lon_weight)
@@ -36,7 +40,6 @@ def calculate_angle2(lat_weight, lon_weight):
     # 将角度调整为正北为 0°，顺时针为正方向
     final_angle = (90 - angle_deg) % 360
     return final_angle
-
 
 def getDirection2(contours):
     # 初始化计数器
@@ -210,7 +213,9 @@ def getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight):
 
 
 
-
+"""
+椭圆描述的质心跟踪法
+"""
 def getSpeed(ellipse1, ellipse2, interval):
     """
     计算椭圆间的速度分量。

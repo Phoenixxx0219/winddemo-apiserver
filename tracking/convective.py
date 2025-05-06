@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from datetime import datetime, timedelta
-from tracking.recognition import get_area_threshold, edge_recognition_0
+from tracking.recognition import get_area_threshold, edge_recognition
 from tracking.tracking_func import get_ellipses_and_contours, calculate_contour_area, calculate_contour_area_overlap, determine_ellipse_relationships
 from tracking.transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
 from tracking.predict import linear_regression_direction, getSpeed, getDirection, getSpeed2, getDirection2
@@ -10,7 +10,9 @@ from tracking.data import add_entity, add_span_data
 
 def batch_process(date, algorithm, size, reflectivity_threshold,
                   datatype=12, path="D:/University/MyForecastApp/winddemo-apiserver/static/Traffic/image", interval_minutes=6):
-
+    """
+    读取图片并识别轮廓
+    """
     pred_path = path + f"/{date[:-4]}/{datatype}/{algorithm}/{date[-4:-2]}-{date[-2:]}"    
     if algorithm == 'real':
         pred_path = pred_path[:-6]
@@ -33,7 +35,7 @@ def batch_process(date, algorithm, size, reflectivity_threshold,
     area_threshold = get_area_threshold(size)
     for img_path in all_images:
         try:
-            edge_image, reflectivity = edge_recognition_0(img_path, area_threshold, reflectivity_threshold)
+            edge_image, reflectivity = edge_recognition(img_path, area_threshold, reflectivity_threshold)
             edge_images.append(edge_image)
             reflectivitys.append(reflectivity)
         except Exception as e:
@@ -48,12 +50,11 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
                      interval_minutes=6, lookup_table_path="D:/University/MyForecastApp/winddemo-apiserver/static/lookup_table.npy"):
     """
     date: 时间
-    algorithm (int): 预测算法。
-    size(int, 默认值：1000): 单体面积阈值大小（单位：平方公里）。
-    reflectivity_threshold(int, 默认值：20): 单体识别雷达反射率的阈值大小（单位：dBZ）
-    poolingScale (int, 默认值：0): 池化参数
-    interval_minutes (int, 默认值：6): 两帧图像之间的时间间隔（单位：分钟）。
-    lookup_table_path (str): 指定的查表文件路径，用于从像素坐标转换为地理坐标（经纬度）。
+    algorithm: 预测算法。
+    size: 单体面积阈值大小（单位：平方公里）。
+    reflectivity_threshold: 单体识别雷达反射率的阈值大小（单位：dBZ）
+    interval_minutes: 两帧图像之间的时间间隔（单位：分钟）。
+    lookup_table_path: 指定的查表文件路径，用于从像素坐标转换为地理坐标（经纬度）。
     """
     # 算法名字映射
     alg_name_map = {

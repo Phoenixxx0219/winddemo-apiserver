@@ -34,15 +34,8 @@ def convert_contour_to_original(contour, scale_x, scale_y):
         original_contour.append((x_scaled, y_scaled))
     return original_contour
 
-# def convert_contour_to_original(contour, scale_x, scale_y):
-#     if scale_x == 1.0 and scale_y == 1.0:
-#         return contour
-#     contour_np = np.array(contour, dtype=np.float64)
-#     contour_np[..., 0] *= scale_x
-#     contour_np[..., 1] *= scale_y
-#     return contour_np.tolist()
-
-def process_ellipse_and_contour(ellipse, contour, binary_image, reflectivity, scale_x, scale_y, ellipses, contours_list, max_values, avg_values):
+def process_ellipse_and_contour(ellipse, contour, binary_image, reflectivity, 
+                                scale_x, scale_y, ellipses, contours_list, max_values, avg_values):
     """
     处理椭圆和轮廓，计算最大值、平均值，并将结果添加到对应的列表中。
     """
@@ -102,64 +95,6 @@ def get_ellipses_and_contours(binary_image, reflectivity, scale_x, scale_y, area
                     process_ellipse_and_contour(ellipse, contour, binary_image, reflectivity, scale_x, scale_y, ellipses, contours_list, max_values, avg_values)
 
     return ellipses, contours_list, max_values, avg_values
-
-
-# def ellipse_intersection_area(img, ellipse1, ellipse2):
-#     """
-#     计算两个椭圆之间的交集面积。
-
-#     参数：
-#         img: 输入图像，用于确定掩膜尺寸。
-#         ellipse1: 椭圆1参数 (center, axes, angle)。
-#         ellipse2: 椭圆2参数 (center, axes, angle)。
-#     返回：
-#         float: 两个椭圆交集区域的面积（单位为像素）。
-#     """
-    
-#     # 生成一个包含两椭圆的掩膜图像（mask）
-#     mask1 = np.zeros(img.shape, dtype=np.uint8)  # 创建空白图像作为掩膜
-#     mask2 = np.zeros(img.shape, dtype=np.uint8)  # 创建空白图像作为掩膜
-#     # 画椭圆
-#     cv2.ellipse(mask1, ellipse1, 255, -1)
-#     cv2.ellipse(mask2, ellipse2, 255, -1)
-#     # 计算交集区域
-#     intersection = cv2.bitwise_and(mask1, mask2)
-#     intersection_area = np.sum(intersection > 0)  # 交集面积（白色区域的像素数）
-#     return intersection_area
-
-
-# def calculate_ellipse_area(ellipse):
-#     """
-#     计算椭圆面积。
-#     参数：
-#         ellipse (tuple): 椭圆参数 (center, axes, angle)。
-#     返回：
-#         float: 椭圆的面积。
-#     """
-#     _, axes, _ = ellipse
-#     major, minor = axes[0] / 2, axes[1] / 2  # 半长轴和半短轴
-#     return np.pi * major * minor
-
-
-# def calculate_area_overlap(img, ellipse1, ellipse2):
-#     """
-#     计算交并比
-#     参数：
-#         img: 图像，用于计算交集面积。
-#         ellipse1: 椭圆1参数 (center, axes, angle)。
-#         ellipse2: 椭圆2参数 (center, axes, angle)。
-#     返回：
-#         float: 两椭圆交并比。
-#     """
-#     # 计算交集面积
-#     intersection_area = ellipse_intersection_area(img, ellipse1, ellipse2)
-#     # 计算前后帧显著性区块的面积（椭圆面积）
-#     area1 = calculate_ellipse_area(ellipse1)  # 椭圆1的面积
-#     area2 = calculate_ellipse_area(ellipse2)  # 椭圆2的面积
-#     # 计算交并比
-#     min_area = min(area1, area2)
-#     iou = intersection_area / min_area if min_area > 0 else 0  # 计算交并比
-#     return iou
 
 def calculate_contour_area(contour):
     """
@@ -242,67 +177,6 @@ def calculate_contour_area_overlap(img_shape, contour1, contour2):
     min_area = min(area1, area2)
     iou = intersection_area / min_area if min_area > 0 else 0
     return iou
-
-
-# def determine_ellipse_relationships(img_shape, contours_list1, contours_list2, threshold=0.4):
-#     """
-#     判断两个帧之间显著性区块的对应关系，包括“生成”、“延续”、“消散”、“分裂”和“合并”。
-#     """
-    
-#     relationships = {
-#         "frame1_to_frame2": [],
-#         "frame2_to_frame1": [],
-#     }
-
-#     # 遍历所有 Frame1 的轮廓，检查对应 Frame2 的轮廓
-#     for i, contour1 in enumerate(contours_list1):
-#         matching_frame2_ids = []
-#         for j, contour2 in enumerate(contours_list2):
-#             # 计算交并比
-#             iou = calculate_contour_area_overlap(img_shape, contour1, contour2)
-#             # 如果交并比超过阈值，记录匹配
-#             if iou > threshold:
-#                 matching_frame2_ids.append(j)
-
-#         # 确定 Frame1 的轮廓状态
-#         if len(matching_frame2_ids) == 0:
-#             state = "消散"
-#         elif len(matching_frame2_ids) == 1:
-#             state = "延续"
-#         else:
-#             state = "分裂"
-        
-#         relationships["frame1_to_frame2"].append({
-#             "frame1_id": i,
-#             "frame2_ids": matching_frame2_ids,
-#             "state": state,
-#         })
-
-#     # 遍历所有 Frame2 的轮廓，检查对应 Frame1 的轮廓
-#     for j, contour2 in enumerate(contours_list2):
-#         matching_frame1_ids = []
-#         for i, contour1 in enumerate(contours_list1):
-#             # 计算交并比
-#             iou = calculate_contour_area_overlap(img_shape, contour1, contour2)
-#             # 如果交并比超过阈值，记录匹配
-#             if iou > threshold:
-#                 matching_frame1_ids.append(i)
-
-#         # 确定 Frame2 的轮廓状态
-#         if len(matching_frame1_ids) == 0:
-#             state = "生成"
-#         elif len(matching_frame1_ids) == 1:
-#             state = "延续"
-#         else:
-#             state = "合并"
-
-#         relationships["frame2_to_frame1"].append({
-#             "frame2_id": j,
-#             "frame1_ids": matching_frame1_ids,
-#             "state": state,
-#         })
-
-#     return relationships
 
 def determine_ellipse_relationships(img_shape, contours_list1, contours_list2, threshold=0.4):
     """

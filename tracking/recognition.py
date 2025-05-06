@@ -20,7 +20,7 @@ def get_area_threshold(size):
     threshold = size * width * height / area
     return int(threshold)
 
-def edge_recognition_0(image_path, area_threshold, reflectivity_threshold):
+def edge_recognition(image_path, area_threshold, reflectivity_threshold):
     """
     基于形态学操作的显著性区块分割与边缘识别，阈值为20（分辨率为820×690）
     """
