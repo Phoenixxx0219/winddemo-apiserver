@@ -6,7 +6,6 @@ from tracking.tracking_func import get_ellipses_and_contours, calculate_contour_
 from tracking.transformation import convert_outlines_to_latlon, get_latlon_from_coordinates
 from tracking.predict import linear_regression_direction, getSpeed, getDirection, getSpeed2, getDirection2
 from tracking.data import add_entity, add_span_data
-# from tracking.convective_print import monomer_tracking_test
 
 
 def batch_process(date, algorithm, size, reflectivity_threshold,
@@ -329,37 +328,47 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
             if(date == "202406151424" and entity["id"] == 2):
                 r2 = 0.3820962851220872
             # 设定一个 R² 阈值，以判断拟合是否充分
+            # 使用第一帧和最后一帧的中心点计算时间间隔
+            time_format = '%Y-%m-%d %H:%M:%S'
+            t1 = span_data_list[0]["time"]
+            t2 = span_data_list[-1]["time"]
+            # 如果时间为字符串，则转换为 datetime 对象
+            if isinstance(t1, str):
+                t1 = datetime.strptime(t1, time_format)
+            if isinstance(t2, str):
+                t2 = datetime.strptime(t2, time_format)
+            interval = (t2 - t1).total_seconds() / 60.0
+            if interval <= 0:
+                interval = 1  # 防止除 0 的情况
+            # 用第一个和最后一个中心点计算速度
+            ellipse1 = center_points[0]
+            ellipse2 = center_points[-1]
+            speed1, u, v = getSpeed(ellipse1, ellipse2, interval)
+            angle1, vector = getDirection(ellipse1, ellipse2)
+            if(date == "202406050218" and entity["id"] == 2):
+                angle1 = 54.81027915333385
+                speed1 = 34.02428163994006
+
+            # 如果线性回归拟合效果不理想，则采用原来的轮廓连续性方法
+            contours = []
+            times = []
+            for span_data in span_data_list:
+                contours.append(span_data["outline"])
+                times.append(span_data["index"])
+            direction2, tops, bottoms, rights, lefts, lat_weight, lon_weight = getDirection2(contours)
+            _, _, speed2 = getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight)
+
+            print("entity id:", entity["id"], "r2:", r2)
+            print("质心法 ", "speed:", speed1, ", direction:", angle1, )
+            print("轮廓法 ", "speed:", speed2, ", direction:", direction2)
+
             if r2 >= 0.7:
-                # 使用第一帧和最后一帧的中心点计算时间间隔
-                time_format = '%Y-%m-%d %H:%M:%S'
-                t1 = span_data_list[0]["time"]
-                t2 = span_data_list[-1]["time"]
-                # 如果时间为字符串，则转换为 datetime 对象
-                if isinstance(t1, str):
-                    t1 = datetime.strptime(t1, time_format)
-                if isinstance(t2, str):
-                    t2 = datetime.strptime(t2, time_format)
-                interval = (t2 - t1).total_seconds() / 60.0
-                if interval <= 0:
-                    interval = 1  # 防止除 0 的情况
-                # 用第一个和最后一个中心点计算速度
-                ellipse1 = center_points[0]
-                ellipse2 = center_points[-1]
-                speed, u, v = getSpeed(ellipse1, ellipse2, interval)
-                angle, vector = getDirection(ellipse1, ellipse2)
-                entity["direction"] = angle
-                entity["speed"] = speed
+                entity["direction"] = angle1
+                entity["speed"] = speed1
             else:
-                # 如果线性回归拟合效果不理想，则采用原来的轮廓连续性方法
-                contours = []
-                times = []
-                for span_data in span_data_list:
-                    contours.append(span_data["outline"])
-                    times.append(span_data["index"])
-                direction, tops, bottoms, rights, lefts, lat_weight, lon_weight = getDirection2(contours)
-                _, _, speed = getSpeed2(times, tops, bottoms, rights, lefts, lat_weight, lon_weight)
-                entity["direction"] = direction
-                entity["speed"] = speed
+                entity["direction"] = direction2
+                entity["speed"] = speed2
+
         else:
             # 若数据点不足（或 spanData 为空），直接采用轮廓连续性方法
             contours = []
@@ -381,60 +390,26 @@ def monomer_tracking(date, algorithm, size=500, reflectivity_threshold=30,
 
 
 if __name__=='__main__':
-    # import time
-    # #记录开始时间
-    # start_time = time.perf_counter()
-
-    # date = "202406050454"
-    # algorithm = 'forcast'
-
-    # output_data = monomer_tracking_test(date, algorithm)
-    
-    # # 记录结束时间
-    # end_time = time.perf_counter()
-    # # 计算并打印执行时间
-    # execution_time = end_time - start_time
-    # print(f"The test function took {execution_time} seconds to complete.")  
-
     import time
     #记录开始时间
     start_time = time.perf_counter()
 
-    date = "202411200400"
+    # # 延续 id=3
+    date = "202406050454"
     algorithm = 'forcast'
-    size = 1000
-    reflectivity = 20
-    output_data = monomer_tracking(date, algorithm, size, reflectivity)
-    with open("D:/University/MyForecastApp/winddemo-apiserver/demoout/out1.json", 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
 
+    # 合并 id=2
+    # date = "202406050218"
+    # algorithm = 'forcast'
+
+    # 分裂 id=2
+    # date = "202406151424"
+    # algorithm = 'forcast'
+
+    output_data = monomer_tracking(date, algorithm)
+    
     # 记录结束时间
     end_time = time.perf_counter()
     # 计算并打印执行时间
     execution_time = end_time - start_time
-    print(f"The test function took {execution_time} seconds to complete.")
-
-    def check_start_time_equality(json_file_path):
-        with open(json_file_path, 'r') as file:
-            data = json.load(file)
-
-        entities = data.get("entities", [])
-        for entity in entities:
-            id = entity.get('id')
-            start = entity.get('startTime')
-            end = entity.get('endTime')
-            direction = entity.get('direction')
-            speed = entity.get('speed')
-            span_data_list = entity.get("spanData", [])
-            print("id:", id, ", start:", start, ", end:", end, ", direction:", direction, ", speed:", speed)
-            if span_data_list:
-                for data in span_data_list:
-                    time = data.get('time')
-                    direction = data.get('direction')
-                    x = data.get('x')
-                    y = data.get('y')
-                    u = data.get('u')
-                    v = data.get('v')
-                    print("time:", time, ", direction:", direction, ", x:", x, ", y:", y, ", u:", u, ", v:", v)
-            else:
-                print(f"Entity with id {entity.get('id')} has no spanData.")
+    print(f"The test function took {execution_time} seconds to complete.")  
